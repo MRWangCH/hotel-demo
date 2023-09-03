@@ -4,9 +4,8 @@ import cn.itcast.hotel.pojo.Hotel;
 import cn.itcast.hotel.pojo.HotelDoc;
 import cn.itcast.hotel.service.IHotelService;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
@@ -15,8 +14,6 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,8 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
-
-import static cn.itcast.hotel.constant.HotelConstants.MAPPING_TEMPLATE;
+import java.util.List;
 
 @SpringBootTest
 public class HotelDocumentTest {
@@ -73,8 +69,8 @@ public class HotelDocumentTest {
         UpdateRequest request = new UpdateRequest("hotel", "61083");
         //2.准备请求参数
         request.doc(
-                "price","952",
-                "starName","四钻"
+                "price", "952",
+                "starName", "四钻"
         );
         //3.发送请求
         client.update(request, RequestOptions.DEFAULT);
@@ -87,6 +83,26 @@ public class HotelDocumentTest {
         DeleteRequest request = new DeleteRequest("hotel", "61083");
         //2.发送请求
         client.delete(request, RequestOptions.DEFAULT);
+    }
+
+    @Test
+    void testBulkRequest() throws IOException {
+        //批量查询酒店数据
+        List<Hotel> hotels = hotelService.list();
+
+        //1.创建request
+        BulkRequest request = new BulkRequest();
+        //2.准备参数，添加多个新增的request
+        for (Hotel hotel : hotels) {
+            //转换为文档类型HotelDoc
+            HotelDoc hotelDoc = new HotelDoc(hotel);
+            //创建新增文档的request对象
+            request.add(new IndexRequest("hotel")
+                    .id(hotelDoc.getId().toString())
+                    .source(JSON.toJSONString(hotelDoc), XContentType.JSON));
+        }
+        //3.发送请求
+        client.bulk(request, RequestOptions.DEFAULT);
     }
 
     @BeforeEach
