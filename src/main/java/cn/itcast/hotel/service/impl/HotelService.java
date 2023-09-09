@@ -16,6 +16,8 @@ import org.elasticsearch.common.geo.GeoPoint;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -71,6 +73,7 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
     }
 
     private void buildBasicQuery(RequestParams params, SearchRequest request) {
+        //1
         //构建BoolenQuery
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         //关键字搜索
@@ -93,11 +96,27 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
         if (params.getStartName() != null && !params.getStartName().equals("")) {
             boolQuery.filter(QueryBuilders.termQuery("startName", params.getStartName()));
         }
-        //星级条件
+        //价格
         if (params.getMinPrice() != null && params.getMaxPrice() != null) {
             boolQuery.filter(QueryBuilders.rangeQuery("price").gte(params.getMinPrice()).lte(params.getMaxPrice()));
         }
-        request.source().query(boolQuery);
+
+
+        //2.算分控制
+        FunctionScoreQueryBuilder functionScoreQueryBuilder =
+                QueryBuilders.functionScoreQuery(
+                        //原始查询
+                        boolQuery,
+                        //FunctionScore的数组
+                        new FunctionScoreQueryBuilder.FilterFunctionBuilder[]{
+                                //其中的一个FunctionScore元素
+                                new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+                                        //过滤条件
+                                        QueryBuilders.termQuery("isAd", true),
+                                        ScoreFunctionBuilders.weightFactorFunction(10)
+                                )
+                        });
+        request.source().query(functionScoreQueryBuilder);
     }
 
 
