@@ -98,9 +98,9 @@ public class HotelSearchTest {
         request.source().query(QueryBuilders.matchQuery("all", "如家"));
         //2.2高亮
         request.source().highlighter(new HighlightBuilder().field("name").requireFieldMatch(false));
-
         //3.发送请求
         SearchResponse response = client.search(request, RequestOptions.DEFAULT);
+        //4.解析响应
         handleResponse(response);
     }
 
