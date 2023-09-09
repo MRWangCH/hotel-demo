@@ -13,4 +13,5 @@ public class RequestParams {
     private String startName;
     private String minPrice;
     private String maxPrice;
+    private String location;
 }
