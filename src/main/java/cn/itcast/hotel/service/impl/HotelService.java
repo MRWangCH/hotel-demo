@@ -12,6 +12,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -40,24 +41,48 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
             SearchRequest request = new SearchRequest("hotel");
             //2.准备DSL
             //2.1query
-            String key = params.getKey();
-            if (StringUtils.isEmpty(key)) {
-                request.source().query(QueryBuilders.matchAllQuery());
-            } else {
-                request.source().query(QueryBuilders.matchQuery("all", key));
-            }
+            buildBasicQuery(params, request);
             //2.2分页
             int page = params.getPage();
             int size = params.getSize();
-            request.source().from((page - 1 ) * size).size(size);
+            request.source().from((page - 1) * size).size(size);
             //3.发送请求
             SearchResponse response = client.search(request, RequestOptions.DEFAULT);
             //4.解析响应
-
             return handleResponse(response);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void buildBasicQuery(RequestParams params, SearchRequest request) {
+        //构建BoolenQuery
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        //关键字搜索
+        String key = params.getKey();
+        if (StringUtils.isEmpty(key)) {
+            boolQuery.must(QueryBuilders.matchAllQuery());
+        } else {
+            boolQuery.must(QueryBuilders.matchQuery("all", key));
+        }
+        // 条件过滤
+        //城市条件
+        if (params.getCity() != null && !params.getCity().equals("")) {
+            boolQuery.filter(QueryBuilders.termQuery("city", params.getCity()));
+        }
+        //品牌条件
+        if (params.getBrand() != null && !params.getBrand().equals("")) {
+            boolQuery.filter(QueryBuilders.termQuery("brand", params.getBrand()));
+        }
+        //星级条件
+        if (params.getStartName() != null && !params.getStartName().equals("")) {
+            boolQuery.filter(QueryBuilders.termQuery("startName", params.getStartName()));
+        }
+        //星级条件
+        if (params.getMinPrice() != null && params.getMaxPrice() != null) {
+            boolQuery.filter(QueryBuilders.rangeQuery("price").gte(params.getMinPrice()).lte(params.getMaxPrice()));
+        }
+        request.source().query(boolQuery);
     }
 
 
@@ -78,6 +103,6 @@ public class HotelService extends ServiceImpl<HotelMapper, Hotel> implements IHo
             hotels.add(hotelDoc);
         }
         //4.4封装返回
-        return new PageResult(total,hotels);
+        return new PageResult(total, hotels);
     }
 }
